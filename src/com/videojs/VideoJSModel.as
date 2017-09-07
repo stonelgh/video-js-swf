@@ -144,6 +144,10 @@ package com.videojs{
             }
         }
 
+        public function get provider():IProvider{
+            return _provider;
+        }
+
         public function get videoReference():Video{
             return _videoReference;
         }
@@ -619,6 +623,7 @@ package com.videojs{
                         _provider = new RTMPVideoProvider();
                         _provider.attachVideo(_videoReference);
                         _provider.init(__src, _autoplay);
+                        //broadcastEventExternally('initProvider', _src);
                     }
 
                     break;

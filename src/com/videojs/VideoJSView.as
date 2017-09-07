@@ -56,6 +56,12 @@ package com.videojs{
             var __availableWidth:int = _model.stageRect.width;
             var __availableHeight:int = _model.stageRect.height;
 
+            //_model.broadcastEventExternally('sizeVideoObject-pre-meta-obj', _model.metadata);
+            //_model.broadcastEventExternally('sizeVideoObject-pre-meta', _model.metadata.width, _model.metadata.height);
+            //_model.broadcastEventExternally('sizeVideoObject-pre-actual', _uiVideo.videoWidth, _uiVideo.videoHeight);
+            //_model.broadcastEventExternally('sizeVideoObject-pre-model.stageRect', _model.stageRect.width, _model.stageRect.height);
+            //_model.broadcastEventExternally('sizeVideoObject-pre-stageRect', stage.getRect(stage).width, stage.getRect(stage).height);
+
             var __nativeWidth:int = 100;
 
             if(_model.metadata.width != undefined){
@@ -91,6 +97,11 @@ package com.videojs{
             _uiVideo.x = Math.round((_model.stageRect.width - _uiVideo.width) / 2);
             _uiVideo.y = Math.round((_model.stageRect.height - _uiVideo.height) / 2);
 
+            //_model.broadcastEventExternally('sizeVideoObject-stageRect', _model.stageRect.width, _model.stageRect.height);
+            //_model.broadcastEventExternally('sizeVideoObject-available', __availableWidth, __availableHeight);
+            //_model.broadcastEventExternally('sizeVideoObject-target', __targetWidth, __targetHeight);
+            //_model.broadcastEventExternally('sizeVideoObject-native', __nativeWidth, __nativeHeight);
+            //_model.broadcastEventExternally('sizeVideoObject-Video', _uiVideo.width, _uiVideo.height);
 
         }
 
@@ -111,12 +122,17 @@ package com.videojs{
         }
 
         private function onMetaData(e:VideoPlaybackEvent):void{
+            //_model.broadcastEventExternally('onMetaData');
             sizeVideoObject();
         }
 
         private function onDimensionUpdate(e:VideoPlaybackEvent):void{
+            //_model.broadcastEventExternally('onDimensionUpdate');
             sizeVideoObject();
         }
 
+        public function get video():Video{
+            return _uiVideo;
+        }
     }
 }

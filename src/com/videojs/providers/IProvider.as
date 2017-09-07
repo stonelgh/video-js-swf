@@ -2,6 +2,7 @@ package com.videojs.providers{
 
     import flash.media.Video;
     import flash.utils.ByteArray;
+    import flash.net.NetStream;
 
     public interface IProvider{
 
@@ -50,6 +51,8 @@ package com.videojs.providers{
          * timeline.
          */
         function discontinuity():void;
+
+        function get netStream():NetStream;
 
         /**
          * Should return an interger that reflects the closest parallel to

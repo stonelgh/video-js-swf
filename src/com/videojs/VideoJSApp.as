@@ -20,5 +20,8 @@ package com.videojs{
             return _model;
         }
         
+        public function get view():VideoJSView{
+            return _uiView;
+        }
     }
 }

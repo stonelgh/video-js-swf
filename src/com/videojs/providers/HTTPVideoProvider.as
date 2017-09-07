@@ -205,6 +205,10 @@ package com.videojs.providers{
             appendBuffer(FLV_HEADER);
         }
 
+        public function get netStream():NetStream{
+            return _ns;
+        }
+
         public function get buffered():Array{
             if(_ns) {
                 if (_src.path === null) {

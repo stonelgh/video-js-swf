@@ -16,6 +16,7 @@ package com.videojs.providers{
     import flash.utils.ByteArray;
     import flash.utils.Timer;
     import flash.utils.getTimer;
+    import flash.net.NetStream;
 
 
     public class HTTPAudioProvider implements IProvider{
@@ -125,6 +126,10 @@ package com.videojs.providers{
 
         public function discontinuity():void{
             throw "HTTPAudioProvider does not support discontinuities";
+        }
+
+        public function get netStream():NetStream{
+            return null;
         }
 
         public function get buffered():Array{

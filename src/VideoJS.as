@@ -1,19 +1,30 @@
 package{
 
+    //import mx.graphics.codec.JPEGEncoder;
+    import com.adobe.images.JPGEncoder;
     import com.videojs.VideoJSApp;
     import com.videojs.events.VideoJSEvent;
     import com.videojs.structs.ExternalEventName;
     import com.videojs.structs.ExternalErrorEventName;
     import com.videojs.Base64;
-
+    import flash.display.BitmapData;
     import flash.display.Sprite;
     import flash.display.StageAlign;
     import flash.display.StageScaleMode;
+    import flash.media.Video;
     import flash.events.Event;
+    import flash.events.IOErrorEvent;
     import flash.events.MouseEvent;
     import flash.events.TimerEvent;
     import flash.external.ExternalInterface;
+    import flash.geom.Matrix;
     import flash.geom.Rectangle;
+    import flash.net.FileReference;
+    import flash.net.URLLoader;
+    import flash.net.URLRequest;
+    import flash.net.URLRequestHeader;
+    import flash.net.URLRequestMethod;
+    import flash.net.URLVariables;
     import flash.system.Security;
     import flash.ui.ContextMenu;
     import flash.ui.ContextMenuItem;
@@ -60,9 +71,8 @@ package{
             var _ctxAbout:ContextMenuItem = new ContextMenuItem("Copyright © 2014 Brightcove, Inc.", false, false);
             var _ctxMenu:ContextMenu = new ContextMenu();
             _ctxMenu.hideBuiltInItems();
-            _ctxMenu.customItems.push(_ctxVersion, _ctxAbout);
+            //_ctxMenu.customItems.push(_ctxVersion, _ctxAbout);
             this.contextMenu = _ctxMenu;
-
         }
 
         private function registerExternalMethods():void{
@@ -84,6 +94,15 @@ package{
                 ExternalInterface.addCallback("vjs_pause", onPauseCalled);
                 ExternalInterface.addCallback("vjs_resume", onResumeCalled);
                 ExternalInterface.addCallback("vjs_stop", onStopCalled);
+
+                ExternalInterface.addCallback("getProperty", onGetPropertyCalled);
+                ExternalInterface.addCallback("setProperty", onSetPropertyCalled);
+                ExternalInterface.addCallback("play", onPlayCalled);
+                ExternalInterface.addCallback("pause", onPauseCalled);
+                ExternalInterface.addCallback("resume", onResumeCalled);
+                ExternalInterface.addCallback("stop", onStopCalled);
+                ExternalInterface.addCallback("snapshot", onSnapshotCalled);
+                ExternalInterface.addCallback("setClick", onSetClickCalled);
 
                 // This callback should only be used when in data generation mode as it
                 // will adjust the notion of current time without notifiying the player
@@ -174,7 +193,7 @@ package{
         }
 
         private function onAddedToStage(e:Event):void{
-            stage.addEventListener(MouseEvent.CLICK, onStageClick);
+            //stage.addEventListener(MouseEvent.CLICK, onStageClick);
             stage.addEventListener(Event.RESIZE, onStageResize);
             stage.scaleMode = StageScaleMode.NO_SCALE;
             stage.align = StageAlign.TOP_LEFT;
@@ -193,6 +212,7 @@ package{
             if(_app != null){
                 _app.model.stageRect = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
                 _app.model.broadcastEvent(new VideoJSEvent(VideoJSEvent.STAGE_RESIZE, {}));
+                //_app.model.broadcastEventExternally('onStageResize', _app.model.stageRect.width, _app.model.stageRect.height);
             }
         }
 
@@ -316,6 +336,18 @@ package{
                 case "getVideoPlaybackQuality":
                     return _app.model.videoPlaybackQuality;
                     break;
+                case "bufferTime":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        return _app.model.provider.netStream.bufferTime;
+                    break;
+                case "bufferTimeMax":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        return _app.model.provider.netStream.bufferTimeMax;
+                    break;
+                case "bufferLength":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        return _app.model.provider.netStream.bufferLength;
+                    break;
             }
             return null;
         }
@@ -371,6 +403,14 @@ package{
                     break;
                 case "rtmpStream":
                     _app.model.rtmpStream = String(pValue);
+                    break;
+                case "bufferTime":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        _app.model.provider.netStream.bufferTime = Number(pValue);
+                    break;
+                case "bufferTimeMax":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        _app.model.provider.netStream.bufferTimeMax = Number(pValue);
                     break;
                 default:
                     _app.model.broadcastErrorEventExternally(ExternalErrorEventName.PROPERTY_NOT_FOUND, pPropertyName);
@@ -431,13 +471,118 @@ package{
             _app.model.stop();
         }
 
+        //private var _img:ByteArray;
+        private function onSnapshotCalled(path:String = ""):String{
+            //Security.loadPolicyFile("xmlsocket://localhost:843");
+            //Security.loadPolicyFile("http://localhost:8081/crossdomain.xml");
+
+            var jpgEncoder:JPGEncoder;
+            jpgEncoder = new JPGEncoder(90);
+            var video:Video = _app.view.video;
+            var rect:Rectangle = video.getRect(video);
+            //_app.model.broadcastEventExternally("onSnapshotCalled-video", video.width, video.height);
+            //_app.model.broadcastEventExternally("onSnapshotCalled-videoRect", rect.width, rect.height);
+            //_app.model.broadcastEventExternally('onSnapshotCalled-model.stageRect', _app.model.stageRect.width, _app.model.stageRect.height);
+            //_app.model.broadcastEventExternally('onSnapshotCalled-stageRect', stage.getRect(stage).width, stage.getRect(stage).height);
+            var bitmapData:BitmapData = new BitmapData(video.videoWidth, video.videoHeight);
+            try {
+                var m:Matrix = new Matrix();
+                m.scale(bitmapData.width/rect.width, bitmapData.height/rect.height);
+                bitmapData.draw(video, m);
+            }
+            catch(e:SecurityError){
+                _app.model.broadcastEventExternally("snapshot-bitmapData.draw-SecurityError", e.message);
+                throw e;
+            }
+            catch(e:ArgumentError){
+                _app.model.broadcastEventExternally("snapshot-bitmapData.draw-ArgumentError", e.message);
+                throw e;
+            }
+            var img:ByteArray = jpgEncoder.encode(bitmapData);
+            if (path == "") {
+                _app.model.broadcastEventExternally('snapshot');
+                return Base64.encode(img);
+            }
+
+            if (/^https?:\/\//i.test(path)) {
+                //var v:URLVariables = new URLVariables();
+                //for (var i:int = 0; i<fields.length; i++) {
+                //    var p:Array = fields[i];
+                //    v[p[0]] = p[1];
+                //}
+
+                var sendHeader:URLRequestHeader = new URLRequestHeader("Content-type", "application/octet-stream");
+                var sendReq:URLRequest = new URLRequest(path);
+
+                sendReq.requestHeaders.push(sendHeader);
+                sendReq.method = URLRequestMethod.POST;
+                sendReq.data = img;
+
+                var sendLoader:URLLoader;
+                sendLoader = new URLLoader();
+                sendLoader.addEventListener(Event.COMPLETE, completeHandler);
+                sendLoader.load(sendReq);
+            }
+            else {
+                var file:FileReference = new FileReference();
+                file.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+                file.addEventListener(Event.COMPLETE, completeHandler);
+                try {
+                    file.save(img, path);
+                }
+                catch(e:Error){
+                    //_img = img;
+                    //_app.model.broadcastEventExternally("snapshot", "Auto save failed. Click video to save locally");
+                    //ExternalInterface.call('alert', 'Auto save failed. Click video to retry');
+                }
+            }
+
+            return "";
+        }
+
+        private function ioErrorHandler(event:IOErrorEvent):void{
+            _app.model.broadcastEventExternally('snapshotComplete', event);
+        }
+
+        private function completeHandler(event:Event):void{
+            _app.model.broadcastEventExternally('snapshotComplete', event);
+        }
+
         private function onUncaughtError(e:Event):void{
             e.preventDefault();
         }
 
-        private function onStageClick(e:MouseEvent):void{
-            _app.model.broadcastEventExternally(ExternalEventName.ON_STAGE_CLICK);
+        private var _clickAction:String = "";
+
+        private function onSetClickCalled(action:String = ""):void{
+            stage.removeEventListener(MouseEvent.CLICK, onStageClick);
+            stage.addEventListener(MouseEvent.CLICK, onStageClick);
+            _clickAction = action;
         }
 
+        private function onStageClick(e:MouseEvent):void{
+            if(_clickAction.indexOf("stat") > -1) {
+                // Set the bufferTimeMax property to enable live buffered stream catch-up
+                // Live content When streaming live content, set the bufferTime property to 0.
+                _app.model.broadcastEventExternally('time', _app.model.provider.netStream.time);
+                _app.model.broadcastEventExternally('bufferTime', _app.model.provider.netStream.bufferTime);
+                _app.model.broadcastEventExternally('bufferTimeMax', _app.model.provider.netStream.bufferTimeMax);
+                _app.model.broadcastEventExternally('bufferLength', _app.model.provider.netStream.bufferLength);
+                _app.model.broadcastEventExternally('liveDelay', _app.model.provider.netStream.liveDelay);
+                var lag:int = _app.model.provider.netStream.bufferLength - _app.model.provider.netStream.bufferTime;
+                _app.model.broadcastEventExternally('lag', lag);
+                //_app.model.broadcastEventExternally('client', _app.model.provider.netStream.client);
+                //_app.model.broadcastEventExternally('client is netstream', _app.model.provider.netStream.client == _app.model.provider.netStream);
+                var video:Video = _app.view.video;
+                //_app.model.broadcastEventExternally('stage', stage.width, stage.height);
+                //_app.model.broadcastEventExternally('app', _app.width, _app.height);
+                //_app.model.broadcastEventExternally('view', _app.view.width, _app.view.height);
+                //_app.model.broadcastEventExternally('video', video.width, video.height);
+                //_app.model.broadcastEventExternally('actual', video.videoWidth, video.videoHeight);
+            }
+            if(_clickAction.indexOf("snapshot") > -1) {
+                onSnapshotCalled("dummy");
+            }
+        }
     }
 }

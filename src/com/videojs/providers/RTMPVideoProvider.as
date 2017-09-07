@@ -150,6 +150,10 @@ package com.videojs.providers{
             throw "RTMPVideoProvider does not support discontinuities";
         }
 
+        public function get netStream():NetStream{
+            return _ns;
+        }
+
         public function get buffered():Array{
             if(_metadata != null && _metadata.duration != undefined && _metadata.duration > 0){
                 return [[0, _metadata.duration]];
@@ -441,6 +445,7 @@ package com.videojs.providers{
             _ns.addEventListener(NetStatusEvent.NET_STATUS, onNetStreamStatus);
             _ns.client = this;
             _ns.bufferTime = 1;
+            _ns.bufferTimeMax = 3;
             _ns.play(_src.streamURL);
             _videoReference.attachNetStream(_ns);
             _model.broadcastEventExternally(ExternalEventName.ON_LOAD_START);
@@ -606,6 +611,15 @@ package com.videojs.providers{
         }
 
         public function onMetaData(pMetaData:Object):void{
+            // adapt to MonaServer
+            if (pMetaData instanceof Array && pMetaData.length >= 4) {
+                pMetaData.width = pMetaData[0];
+                pMetaData.displayWidth = pMetaData[0];
+                pMetaData.height = pMetaData[1];
+                pMetaData.displayHeight = pMetaData[1];
+                pMetaData.audiocodecid = pMetaData[2]; // ?
+                pMetaData.videocodecid = pMetaData[3]; // ?
+            }
             _metadata = pMetaData;
             if(pMetaData.duration != undefined){
                 _isLive = false;
