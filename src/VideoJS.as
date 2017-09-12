@@ -95,6 +95,10 @@ package{
                 ExternalInterface.addCallback("vjs_resume", onResumeCalled);
                 ExternalInterface.addCallback("vjs_stop", onStopCalled);
 
+                // This callback should only be used when in data generation mode as it
+                // will adjust the notion of current time without notifiying the player
+                ExternalInterface.addCallback("vjs_adjustCurrentTime", onAdjustCurrentTimeCalled);
+
                 ExternalInterface.addCallback("getProperty", onGetPropertyCalled);
                 ExternalInterface.addCallback("setProperty", onSetPropertyCalled);
                 ExternalInterface.addCallback("play", onPlayCalled);
@@ -103,10 +107,7 @@ package{
                 ExternalInterface.addCallback("stop", onStopCalled);
                 ExternalInterface.addCallback("snapshot", onSnapshotCalled);
                 ExternalInterface.addCallback("setClick", onSetClickCalled);
-
-                // This callback should only be used when in data generation mode as it
-                // will adjust the notion of current time without notifiying the player
-                ExternalInterface.addCallback("vjs_adjustCurrentTime", onAdjustCurrentTimeCalled);
+                ExternalInterface.addCallback("detectStall", onDetectStallCalled);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -457,18 +458,29 @@ package{
 
         private function onPlayCalled():void{
             _app.model.play();
+            if (_stallTimer) {
+                startStallTimer();
+            }
         }
 
         private function onPauseCalled():void{
             _app.model.pause();
+            if (_stallTimer)
+                _stallTimer.stop();
         }
 
         private function onResumeCalled():void{
             _app.model.resume();
+            if (_stallTimer) {
+                startStallTimer();
+            }
         }
 
         private function onStopCalled():void{
             _app.model.stop();
+            if (_stallTimer) {
+                _stallTimer.stop();
+            }
         }
 
         //private var _img:ByteArray;
@@ -582,6 +594,62 @@ package{
             }
             if(_clickAction.indexOf("snapshot") > -1) {
                 onSnapshotCalled("dummy");
+            }
+        }
+
+        private var _stallTimer:Timer = null;
+        private var _stallListener:String = "";
+        private var _stallTmo:int = 30000;
+        private var _lastVideoTime:Number = 0; // number of seconds
+        private var _lastRecordTime:Date = new Date();
+
+        private function onDetectStallCalled(listener:String = "", tmo:int = 30):void{
+            if (tmo < 10)
+                tmo = 10;
+            _stallTmo = tmo;
+            _stallListener = listener;
+
+            tmo = _stallTmo * 1000 / 3;
+            if (!_stallTimer) {
+                _stallTimer = new Timer(tmo);
+                _stallTimer.addEventListener(TimerEvent.TIMER, onStallTimer);
+            }
+
+            if(_stallTimer.delay != tmo)
+                _stallTimer.delay = tmo;
+            if (listener == "" && _stallTimer.running) {
+                _stallTimer.stop();
+            }
+            else if (listener != "" && !_stallTimer.running) {
+                startStallTimer();
+            }
+        }
+
+        private function startStallTimer():void {
+            updateStallRecord();
+            _stallTimer.start();
+        }
+
+        private function updateStallRecord():void {
+            if(_app) {
+                _lastVideoTime = _app.model.time;
+            }
+            _lastRecordTime = new Date();
+            //_app.model.broadcastEventExternally('updateStallRecord', _lastVideoTime, _lastRecordTime.toTimeString());
+        }
+
+        private function onStallTimer(evt:Event):void {
+            var now:Date = new Date();
+            if (_app.model.time == _lastVideoTime &&
+                now.getTime() - _lastRecordTime.getTime() > _stallTmo * 1000) {
+                if(ExternalInterface.available) {
+                    ExternalInterface.call(_stallListener, ExternalInterface.objectID);
+                }
+                //_app.model.broadcastEventExternally('Stall detected', _stallListener, _lastVideoTime, _lastRecordTime.toTimeString());
+                updateStallRecord();
+            }
+            if (_app.model.time != _lastVideoTime) {
+                updateStallRecord();
             }
         }
     }
