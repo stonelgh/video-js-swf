@@ -643,7 +643,7 @@ package{
             if (_app.model.time == _lastVideoTime &&
                 now.getTime() - _lastRecordTime.getTime() > _stallTmo * 1000) {
                 if(ExternalInterface.available) {
-                    ExternalInterface.call(_stallListener, ExternalInterface.objectID);
+                    ExternalInterface.call(_stallListener, ExternalInterface.objectID, 'stall');
                 }
                 //_app.model.broadcastEventExternally('Stall detected', _stallListener, _lastVideoTime, _lastRecordTime.toTimeString());
                 updateStallRecord();
