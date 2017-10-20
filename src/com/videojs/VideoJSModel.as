@@ -541,6 +541,11 @@ package com.videojs{
             }
         }
 
+        public function destroy():void {
+            stop();
+            _instance = null;
+        }
+
         public function hexToNumber(pHex:String):Number{
             var __number:Number = 0;
             // clean it up

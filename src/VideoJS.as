@@ -108,6 +108,7 @@ package{
                 ExternalInterface.addCallback("snapshot", onSnapshotCalled);
                 ExternalInterface.addCallback("setClick", onSetClickCalled);
                 ExternalInterface.addCallback("detectStall", onDetectStallCalled);
+                ExternalInterface.addCallback("sync", onSyncCalled);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -480,6 +481,26 @@ package{
             _app.model.stop();
             if (_stallTimer) {
                 _stallTimer.stop();
+            }
+        }
+
+        private function onSyncCalled():void{
+            var muted = _app.model.muted;
+            _app.model.destroy();
+            if (_stallTimer) {
+                _stallTimer.stop();
+            }
+
+            removeChild(_app);
+            _app = new VideoJSApp();
+            addChild(_app);
+            _app.model.stageRect = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
+            //setTimeout(finish, 50);
+            finish();
+            _app.model.muted = muted;
+
+            if (_stallTimer) {
+                startStallTimer();
             }
         }
 
