@@ -446,6 +446,7 @@ package com.videojs.providers{
             _ns.client = this;
             _ns.bufferTime = 2;
             _ns.bufferTimeMax = 5;
+            _ns.inBufferSeek = true;
             _ns.play(_src.streamURL);
             _videoReference.attachNetStream(_ns);
             _model.broadcastEventExternally(ExternalEventName.ON_LOAD_START);

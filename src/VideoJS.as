@@ -20,6 +20,7 @@ package{
     import flash.geom.Matrix;
     import flash.geom.Rectangle;
     import flash.net.FileReference;
+    import flash.net.NetStream;
     import flash.net.URLLoader;
     import flash.net.URLRequest;
     import flash.net.URLRequestHeader;
@@ -109,6 +110,8 @@ package{
                 ExternalInterface.addCallback("setClick", onSetClickCalled);
                 ExternalInterface.addCallback("detectStall", onDetectStallCalled);
                 ExternalInterface.addCallback("sync", onSyncCalled);
+                ExternalInterface.addCallback("step", onStepCalled);
+                ExternalInterface.addCallback("seekRelative", onSeekRelativeCalled);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -350,6 +353,10 @@ package{
                     if(_app.model.provider && _app.model.provider.netStream)
                         return _app.model.provider.netStream.bufferLength;
                     break;
+                case "inBufferSeek":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        return _app.model.provider.netStream.inBufferSeek;
+                    break;
             }
             return null;
         }
@@ -413,6 +420,10 @@ package{
                 case "bufferTimeMax":
                     if(_app.model.provider && _app.model.provider.netStream)
                         _app.model.provider.netStream.bufferTimeMax = Number(pValue);
+                    break;
+                case "inBufferSeek":
+                    if(_app.model.provider && _app.model.provider.netStream)
+                        _app.model.provider.netStream.inBufferSeek = _app.model.humanToBoolean(pValue);
                     break;
                 default:
                     _app.model.broadcastErrorEventExternally(ExternalErrorEventName.PROPERTY_NOT_FOUND, pPropertyName);
@@ -631,6 +642,14 @@ package{
             _stallListener = listener;
 
             tmo = _stallTmo * 1000 / 3;
+            if (_app.model.provider && _app.model.provider.netStream) {
+                var bufmax:int = _app.model.provider.netStream.bufferTimeMax * 1000;
+                if(bufmax > 0) {
+                    bufmax = bufmax >= 6000 ? bufmax / 2 : bufmax;
+                    bufmax = bufmax < 3000 ? 3000 : bufmax;
+                    tmo = tmo > bufmax ? bufmax : tmo;
+                }
+            }
             if (!_stallTimer) {
                 _stallTimer = new Timer(tmo);
                 _stallTimer.addEventListener(TimerEvent.TIMER, onStallTimer);
@@ -661,6 +680,13 @@ package{
 
         private function onStallTimer(evt:Event):void {
             var now:Date = new Date();
+            if (_app.model.provider && _app.model.provider.netStream) {
+                var ns:NetStream = _app.model.provider.netStream;
+                if (ns.bufferTimeMax > 0 && ns.bufferLength > ns.bufferTimeMax) {
+                    ExternalInterface.call(_stallListener, ExternalInterface.objectID, 'lag');
+                    //_app.model.broadcastEventExternally('lag detected', ns.bufferLength, ns.bufferTimeMax);
+                }
+            }
             if (_app.model.time == _lastVideoTime &&
                 now.getTime() - _lastRecordTime.getTime() > _stallTmo * 1000) {
                 if(ExternalInterface.available) {
@@ -671,6 +697,21 @@ package{
             }
             if (_app.model.time != _lastVideoTime) {
                 updateStallRecord();
+            }
+        }
+
+        // step forward/backward number of frames
+        // valid only when NetStream.inBufferSeek is true and server supports smart seeking.
+        private function onStepCalled(frames:int = 10):void{
+            if(_app.model.provider && _app.model.provider.netStream)
+                _app.model.provider.netStream.step(frames);
+        }
+
+        // unit of offset is seconds.
+        private function onSeekRelativeCalled(offset:int = 1):void{
+            if (_app.model.provider && _app.model.provider.netStream) {
+                var time:int = _app.model.provider.netStream.time;
+                _app.model.provider.netStream.seek(time + offset);
             }
         }
     }
