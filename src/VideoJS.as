@@ -10,6 +10,7 @@ package{
     import flash.display.BitmapData;
     import flash.display.Sprite;
     import flash.display.StageAlign;
+    import flash.display.StageDisplayState;
     import flash.display.StageScaleMode;
     import flash.media.Video;
     import flash.events.Event;
@@ -31,6 +32,7 @@ package{
     import flash.ui.ContextMenuItem;
     import flash.utils.ByteArray;
     import flash.utils.Timer;
+    import flash.utils.getTimer;
     import flash.utils.setTimeout;
 
     [SWF(backgroundColor="#000000", frameRate="60", width="480", height="270")]
@@ -195,6 +197,9 @@ package{
                 }
               }
             }*/
+
+            if(enableDblClick)
+                onSetClickCalled(_clickAction);
         }
 
         private function onAddedToStage(e:Event):void{
@@ -357,6 +362,8 @@ package{
                     if(_app.model.provider && _app.model.provider.netStream)
                         return _app.model.provider.netStream.inBufferSeek;
                     break;
+                case "enableDblClick":
+                    return enableDblClick;
             }
             return null;
         }
@@ -424,6 +431,11 @@ package{
                 case "inBufferSeek":
                     if(_app.model.provider && _app.model.provider.netStream)
                         _app.model.provider.netStream.inBufferSeek = _app.model.humanToBoolean(pValue);
+                    break;
+                case "enableDblClick":
+                    enableDblClick = _app.model.humanToBoolean(pValue);
+                    if(enableDblClick)
+                        onSetClickCalled(_clickAction);
                     break;
                 default:
                     _app.model.broadcastErrorEventExternally(ExternalErrorEventName.PROPERTY_NOT_FOUND, pPropertyName);
@@ -604,6 +616,8 @@ package{
             _clickAction = action;
         }
 
+        private var enableDblClick:Boolean;
+        private var dblClickTime:Number;
         private function onStageClick(e:MouseEvent):void{
             if(_clickAction.indexOf("stat") > -1) {
                 // Set the bufferTimeMax property to enable live buffered stream catch-up
@@ -626,6 +640,24 @@ package{
             }
             if(_clickAction.indexOf("snapshot") > -1) {
                 onSnapshotCalled("dummy");
+            }
+            if (!enableDblClick)
+                return;
+            // dblClick => fullscreen
+            if (!isNaN(dblClickTime) && getTimer() - dblClickTime < 500) {
+                dblClickTime = NaN;
+                onFullScreenRequest();
+            } else {
+                dblClickTime = getTimer();
+            }
+        }
+
+        private function onFullScreenRequest():void {
+            if (_app.view.stage.allowsFullScreen) {
+                _app.view.stage.displayState =
+                    _app.view.stage.displayState == StageDisplayState.NORMAL
+                    ? StageDisplayState.FULL_SCREEN
+                    : StageDisplayState.NORMAL;
             }
         }
 
