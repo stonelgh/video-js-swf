@@ -516,6 +516,7 @@ package{
                 _stallTimer.stop();
             }
 
+            var rotation:int = _app.view.video.rotation;
             removeChild(_app);
             _app = new VideoJSApp();
             addChild(_app);
@@ -523,6 +524,7 @@ package{
             //setTimeout(finish, 50);
             finish();
             _app.model.muted = muted;
+            onRotateCalled(rotation);
 
             if (_stallTimer) {
                 startStallTimer();
