@@ -114,6 +114,8 @@ package{
                 ExternalInterface.addCallback("sync", onSyncCalled);
                 ExternalInterface.addCallback("step", onStepCalled);
                 ExternalInterface.addCallback("seekRelative", onSeekRelativeCalled);
+                ExternalInterface.addCallback("rotate", onRotateCalled);
+                ExternalInterface.addCallback("move", onMoveCalled);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -508,7 +510,7 @@ package{
         }
 
         private function onSyncCalled():void{
-            var muted = _app.model.muted;
+            var muted:Boolean = _app.model.muted;
             _app.model.destroy();
             if (_stallTimer) {
                 _stallTimer.stop();
@@ -745,6 +747,23 @@ package{
                 var time:int = _app.model.provider.netStream.time;
                 _app.model.provider.netStream.seek(time + offset);
             }
+        }
+
+        // Rotate the video, in degrees, from its original orientation.
+        private function onRotateCalled(rotation:int = 90):void{
+            var video:Video = _app.view.video;
+            video.rotation += rotation;
+            _app.view.sizeVideoObject();
+            //_app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.height, video.width, video.videoHeight, video.videoWidth);
+        }
+
+        private function onMoveCalled(x:int, y:int, width:int, height:int):void{
+            var video:Video = _app.view.video;
+            video.x = x;
+            video.y = y;
+            video.height = height;
+            video.width = width;
+            //_app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.height, video.width, video.videoHeight, video.videoWidth);
         }
     }
 }

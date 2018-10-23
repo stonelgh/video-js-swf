@@ -49,7 +49,7 @@ package com.videojs{
         }
 
 
-        private function sizeVideoObject():void{
+        public function sizeVideoObject():void{
 
             var __targetWidth:int, __targetHeight:int;
 
@@ -81,6 +81,13 @@ package com.videojs{
             if(_uiVideo.videoWidth != 0){
                 __nativeHeight = _uiVideo.videoHeight;
             }
+            var __rotation:int = (_uiVideo.rotation % 360 + 360) % 360;
+            var __nh:int = __nativeHeight;
+            var __nw:int = __nativeWidth;
+            if(__rotation == 90 || __rotation == 270){
+                __nativeHeight = __nw;
+                __nativeWidth = __nh;
+            }
 
             // first, size the whole thing down based on the available width
             __targetWidth = __availableWidth;
@@ -97,6 +104,17 @@ package com.videojs{
             _uiVideo.x = Math.round((_model.stageRect.width - _uiVideo.width) / 2);
             _uiVideo.y = Math.round((_model.stageRect.height - _uiVideo.height) / 2);
 
+            if(__rotation == 90){
+                _uiVideo.x = _model.stageRect.width - _uiVideo.x;
+            }
+            else if(__rotation == 180){
+                _uiVideo.x = _model.stageRect.width - _uiVideo.x;
+                _uiVideo.y = _model.stageRect.height - _uiVideo.y;
+            }
+            else if(__rotation == 270){
+                _uiVideo.y = _model.stageRect.height - _uiVideo.y;
+            }
+            //_model.broadcastEventExternally('sizeVideoObject', __rotation, __nativeHeight, __nativeWidth, __availableWidth, __availableHeight);
             //_model.broadcastEventExternally('sizeVideoObject-stageRect', _model.stageRect.width, _model.stageRect.height);
             //_model.broadcastEventExternally('sizeVideoObject-available', __availableWidth, __availableHeight);
             //_model.broadcastEventExternally('sizeVideoObject-target', __targetWidth, __targetHeight);
