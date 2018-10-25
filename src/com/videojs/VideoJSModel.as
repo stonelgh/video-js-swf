@@ -543,6 +543,10 @@ package com.videojs{
 
         public function destroy():void {
             stop();
+            if(_provider){
+                _provider.die();
+                _provider = null;
+            }
             _instance = null;
         }
 
