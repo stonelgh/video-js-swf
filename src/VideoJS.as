@@ -117,6 +117,7 @@ package{
                 ExternalInterface.addCallback("rotate", onRotateCalled);
                 ExternalInterface.addCallback("move", onMoveCalled);
                 ExternalInterface.addCallback("scale", onScaleCalled);
+                ExternalInterface.addCallback("toggleFullScreen", onFullScreenRequest);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -367,6 +368,8 @@ package{
                     break;
                 case "enableDblClick":
                     return enableDblClick;
+                case "fullscreen":
+                    return _app.view.stage.displayState == StageDisplayState.FULL_SCREEN;
             }
             return null;
         }
@@ -657,11 +660,17 @@ package{
         }
 
         private function onFullScreenRequest():void {
-            if (_app.view.stage.allowsFullScreen) {
-                _app.view.stage.displayState =
-                    _app.view.stage.displayState == StageDisplayState.NORMAL
-                    ? StageDisplayState.FULL_SCREEN
-                    : StageDisplayState.NORMAL;
+            try {
+                if (_app.view.stage.allowsFullScreen) {
+                    _app.view.stage.displayState =
+                        _app.view.stage.displayState == StageDisplayState.NORMAL
+                        ? StageDisplayState.FULL_SCREEN
+                        : StageDisplayState.NORMAL;
+                }
+            }
+            catch(e:SecurityError){
+                _app.model.broadcastEventExternally("onFullScreenRequest-SecurityError", e.message);
+                throw e;
             }
         }
 
@@ -757,13 +766,12 @@ package{
         private function onRotateCalled(rotation:int = 90):void{
             var video:Video = _app.view.video;
             //_app.model.broadcastEventExternally('onRotateCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
-            _app.model.broadcastEventExternally('onRotateCalled-1', video.transform.matrix.toString());
             _rotation = (_rotation + rotation) % 360;
             _app.view.rotate(_rotation);
-            _app.model.broadcastEventExternally('onRotateCalled-2', video.transform.matrix.toString());
-            _app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+            //_app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
         }
 
+        // Set video window size and position
         private function onMoveCalled(x:int, y:int, width:int, height:int):void{
             var video:Video = _app.view.video;
             _app.model.broadcastEventExternally('onMoveCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
@@ -774,12 +782,15 @@ package{
             _app.model.broadcastEventExternally('onMoveCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
         }
 
+        // scale the video
         private function onScaleCalled(x:Number, y:Number):void{
             var video:Video = _app.view.video;
-            //_app.model.broadcastEventExternally('onScaleCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+            _app.model.broadcastEventExternally('onScaleCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+            _app.model.broadcastEventExternally('onScaleCalled-1', video.transform.matrix.toString());
             video.scaleX = x;
             video.scaleY = y;
-            //_app.model.broadcastEventExternally('onScaleCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY, video.stage.scaleMode);
+            _app.model.broadcastEventExternally('onScaleCalled-2', video.transform.matrix.toString());
+            _app.model.broadcastEventExternally('onScaleCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY, video.stage.scaleMode);
         }
     }
 }
