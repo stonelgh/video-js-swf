@@ -116,6 +116,7 @@ package{
                 ExternalInterface.addCallback("seekRelative", onSeekRelativeCalled);
                 ExternalInterface.addCallback("rotate", onRotateCalled);
                 ExternalInterface.addCallback("move", onMoveCalled);
+                ExternalInterface.addCallback("scale", onScaleCalled);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -516,7 +517,6 @@ package{
                 _stallTimer.stop();
             }
 
-            var rotation:int = _app.view.video.rotation;
             removeChild(_app);
             _app = new VideoJSApp();
             addChild(_app);
@@ -524,7 +524,7 @@ package{
             //setTimeout(finish, 50);
             finish();
             _app.model.muted = muted;
-            onRotateCalled(rotation);
+            _app.view.rotate(_rotation);
 
             if (_stallTimer) {
                 startStallTimer();
@@ -751,21 +751,35 @@ package{
             }
         }
 
+        private var _rotation:int = 0;
+
         // Rotate the video, in degrees, from its original orientation.
         private function onRotateCalled(rotation:int = 90):void{
             var video:Video = _app.view.video;
-            video.rotation += rotation;
-            _app.view.sizeVideoObject();
-            //_app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.height, video.width, video.videoHeight, video.videoWidth);
+            //_app.model.broadcastEventExternally('onRotateCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+            _app.model.broadcastEventExternally('onRotateCalled-1', video.transform.matrix.toString());
+            _rotation = (_rotation + rotation) % 360;
+            _app.view.rotate(_rotation);
+            _app.model.broadcastEventExternally('onRotateCalled-2', video.transform.matrix.toString());
+            _app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
         }
 
         private function onMoveCalled(x:int, y:int, width:int, height:int):void{
             var video:Video = _app.view.video;
+            _app.model.broadcastEventExternally('onMoveCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
             video.x = x;
             video.y = y;
-            video.height = height;
             video.width = width;
-            //_app.model.broadcastEventExternally('onRotateCalled-2', video.rotation, video.x, video.y, video.height, video.width, video.videoHeight, video.videoWidth);
+            video.height = height;
+            _app.model.broadcastEventExternally('onMoveCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+        }
+
+        private function onScaleCalled(x:Number, y:Number):void{
+            var video:Video = _app.view.video;
+            //_app.model.broadcastEventExternally('onScaleCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
+            video.scaleX = x;
+            video.scaleY = y;
+            //_app.model.broadcastEventExternally('onScaleCalled-2', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY, video.stage.scaleMode);
         }
     }
 }
