@@ -118,6 +118,7 @@ package{
                 ExternalInterface.addCallback("move", onMoveCalled);
                 ExternalInterface.addCallback("scale", onScaleCalled);
                 ExternalInterface.addCallback("toggleFullScreen", onFullScreenRequest);
+                ExternalInterface.addCallback("setDomain", onSetDomain);
             }
             catch(e:SecurityError){
                 if (loaderInfo.parameters.debug != undefined && loaderInfo.parameters.debug == "true") {
@@ -131,10 +132,43 @@ package{
             }
             finally{}
 
-
-
             setTimeout(finish, 50);
+        }
 
+        private var _restricted:int = -1;
+
+        // do a simple verification with container.
+        // container should define a function as the following:
+        // Date.sec = function(t) { return t + 3600*8; }
+        private function restricted():Boolean{
+            if (_restricted < 0 && ExternalInterface.available) {
+                try {
+                    var sec:int = new Date().getTime() / 1000;
+                    var r:int = ExternalInterface.call("Date.sec", sec);
+                    _restricted = r - sec - 3600*8;
+                }
+                catch(e:Error){
+                    //_app.model.broadcastEventExternally('restricted', e);
+                    _restricted = 1;
+                }
+            }
+            return _restricted != 0;
+        }
+
+        private function restrict(inf:String = ""):void{
+            if(restricted()) {
+                throw new TypeError(inf);
+            }
+        }
+
+        private function onSetDomain(domain:String = ""):*{
+            restrict();
+
+            domain = domain == "" ? loaderInfo.url : domain;
+            Security.allowDomain(domain)
+            _app.model.broadcastEventExternally('onSetDomain', domain);
+            //Security.showSettings();
+            return domain;
         }
 
         private function finish():void{
@@ -514,6 +548,8 @@ package{
         }
 
         private function onSyncCalled():void{
+            restrict();
+
             var muted:Boolean = _app.model.muted;
             _app.model.destroy();
             if (_stallTimer) {
@@ -536,6 +572,8 @@ package{
 
         //private var _img:ByteArray;
         private function onSnapshotCalled(path:String = ""):String{
+            restrict();
+
             //Security.loadPolicyFile("xmlsocket://localhost:843");
             //Security.loadPolicyFile("http://localhost:8081/crossdomain.xml");
 
@@ -618,6 +656,8 @@ package{
         private var _clickAction:String = "";
 
         private function onSetClickCalled(action:String = ""):void{
+            restrict();
+
             stage.removeEventListener(MouseEvent.CLICK, onStageClick);
             stage.addEventListener(MouseEvent.CLICK, onStageClick);
             _clickAction = action;
@@ -681,6 +721,8 @@ package{
         private var _lastRecordTime:Date = new Date();
 
         private function onDetectStallCalled(listener:String = "", tmo:int = 30):void{
+            restrict();
+
             if (tmo < 10)
                 tmo = 10;
             _stallTmo = tmo;
@@ -748,12 +790,16 @@ package{
         // step forward/backward number of frames
         // valid only when NetStream.inBufferSeek is true and server supports smart seeking.
         private function onStepCalled(frames:int = 10):void{
+            restrict();
+
             if(_app.model.provider && _app.model.provider.netStream)
                 _app.model.provider.netStream.step(frames);
         }
 
         // unit of offset is seconds.
         private function onSeekRelativeCalled(offset:int = 1):void{
+            restrict();
+
             if (_app.model.provider && _app.model.provider.netStream) {
                 var time:int = _app.model.provider.netStream.time;
                 _app.model.provider.netStream.seek(time + offset);
@@ -764,6 +810,8 @@ package{
 
         // Rotate the video, in degrees, from its original orientation.
         private function onRotateCalled(rotation:int = 90):void{
+            restrict();
+
             var video:Video = _app.view.video;
             //_app.model.broadcastEventExternally('onRotateCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
             _rotation = (_rotation + rotation) % 360;
@@ -773,6 +821,8 @@ package{
 
         // Set video window size and position
         private function onMoveCalled(x:int, y:int, width:int, height:int):void{
+            restrict();
+
             var video:Video = _app.view.video;
             _app.model.broadcastEventExternally('onMoveCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
             video.x = x;
@@ -784,6 +834,8 @@ package{
 
         // scale the video
         private function onScaleCalled(x:Number, y:Number):void{
+            restrict();
+
             var video:Video = _app.view.video;
             _app.model.broadcastEventExternally('onScaleCalled-1', video.rotation, video.x, video.y, video.width, video.height, video.scaleX, video.scaleY);
             _app.model.broadcastEventExternally('onScaleCalled-1', video.transform.matrix.toString());
